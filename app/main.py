@@ -1,10 +1,19 @@
 import time
 from typing import Optional
-from fastapi import FastAPI, Response, status, HTTPException
+from fastapi import Depends, FastAPI, Response, status, HTTPException
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from pydantic import BaseModel
 from requests import post
+
+from sqlalchemy.orm import Session
+
+
+from . import models
+from .database import engine, get_db
+
+models.Base.metadata.create_all(bind=engine)
+
 
 while True:
 
@@ -104,3 +113,8 @@ def update_post(id: int, post: Post):
                             detail=f"post with id={id} does not exist")
 
     return {"data": updated_post}
+
+
+@app.get("/test")
+def get_post(db: Session = Depends(get_db)):
+    return {"msg": "hey"}
