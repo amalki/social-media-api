@@ -1,5 +1,5 @@
 import time
-from typing import Optional
+from typing import Optional, List
 from fastapi import Depends, FastAPI, Response, status, HTTPException
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -37,14 +37,14 @@ while True:
 app = FastAPI()
 
 
-@app.get("/posts/")
+@app.get("/posts/", response_model=List[schemas.Post])
 def get_posts(db: Session = Depends(get_db)):
     posts = db.query(models.Post).all()
 
-    return {"data": posts}
+    return posts
 
 
-@app.get("/posts/{id}")
+@app.get("/posts/{id}", response_model=schemas.Post)
 def get_post(id: int, db: Session = Depends(get_db)):
     post = (
         db.query(models.Post).filter(models.Post.id == id).first()
@@ -56,18 +56,19 @@ def get_post(id: int, db: Session = Depends(get_db)):
             detail=f"post with id={id} was not found",
         )
 
-    return {"data": post}
+    return post
 
 
-@app.post("/posts/", status_code=status.HTTP_201_CREATED)
-def create_post(post: schemas.Post, db: Session = Depends(get_db)):
+@app.post("/posts/", status_code=status.HTTP_201_CREATED, response_model=schemas.Post)
+def create_post(post: schemas.PostCreate, db: Session = Depends(get_db)):
     new_post = models.Post(**post.dict())
 
     db.add(new_post)
     db.commit()
     db.refresh(new_post)  # update new_post from the database
 
-    return {"data": new_post}
+
+    return new_post
 
 
 @app.delete("/posts/{id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -87,8 +88,8 @@ def delete_post(id: int, db: Session = Depends(get_db)):
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@app.put("/posts/{id}", status_code=status.HTTP_204_NO_CONTENT)
-def update_post(id: int, updated_post: schemas.Post, db: Session = Depends(get_db)):
+@app.put("/posts/{id}", response_model=schemas.Post) #can also use status_code=status.HTTP_204_NO_CONTENT
+def update_post(id: int, updated_post: schemas.PostCreate, db: Session = Depends(get_db)):
     post_query = db.query(models.Post).filter(models.Post.id == id)
 
     if not post_query.first():
@@ -101,4 +102,4 @@ def update_post(id: int, updated_post: schemas.Post, db: Session = Depends(get_d
 
     db.commit()
 
-    return {"data": post_query.first()}
+    return post_query.first()
